@@ -3,6 +3,7 @@ BEGIN TRANSACTION;
 DROP INDEX IF EXISTS "items_unique_id";
 DROP INDEX IF EXISTS "payments_unique_id";
 DROP INDEX IF EXISTS "delivery_unique_id";
+DROP INDEX IF EXISTS "items_unique_track_number";
 
 DROP TABLE IF EXISTS delivery CASCADE;
 DROP TABLE IF EXISTS items CASCADE;
