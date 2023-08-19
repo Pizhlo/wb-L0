@@ -19,12 +19,16 @@ COMMIT;
 
 -- payments
 BEGIN TRANSACTION;
+
+CREATE TYPE currency_enum AS ENUM ('USD', 'RUB');
+CREATE TYPE provider_enum AS ENUM ('wbpay');
+
 CREATE TABLE IF NOT EXISTS payments (
     id SERIAL NOT NULL,
     "transaction" TEXT NOT NULL,
     request_id TEXT,
-    currency TEXT NOT NULL,
-    provider TEXT NOT NULL,
+    currency currency_enum NOT NULL,
+    provider provider_enum NOT NULL,
     amount INT NOT NULL,
     payment_date text NOT NULL,
     bank TEXT NOT NULL,
@@ -63,11 +67,14 @@ COMMIT;
 
 -- orders
 BEGIN TRANSACTION;
+
+CREATE TYPE entry_enum AS ENUM ('WBIL');
+
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL NOT NULL,
     order_id UUID NOT NULL,
     track_number TEXT NULL,
-    entry TEXT NOT NULL,
+    entry entry_enum NOT NULL,
     delivery_id serial NOT NULL,
     payment_id serial NOT NULL,
     locale TEXT NOT NULL,
