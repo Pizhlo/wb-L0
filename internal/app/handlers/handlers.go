@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetByID(w http.ResponseWriter, r *http.Request, service service.Service) {
+func GetOrderByID(w http.ResponseWriter, r *http.Request, service service.Service) {
 	id := chi.URLParam(r, "id")
 
 	uuid, err := uuid.Parse(id)
