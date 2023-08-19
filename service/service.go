@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Pizhlo/wb-L0/models"
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -11,7 +12,7 @@ type Service struct {
 }
 
 type Storage interface {
-	GetUserByID(ctx context.Context, id int) (models.User, error)
+	GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, error)
 }
 
 func New(storage Storage) *Service {
