@@ -3,13 +3,13 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"github.com/Pizhlo/wb-L0/errs"
 	"github.com/Pizhlo/wb-L0/models"
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,27 +24,27 @@ type DB struct {
 
 // postgresql://root:secret@localhost:8081/wb_db?sslmode=disable
 
-func New(conn *pgxpool.Pool, dbAddress string, migratePath string) (*DB, error) {
+func New(conn *pgxpool.Pool, dbAddress string, migratePath string) *DB {
 	db := &DB{conn}
-	return db, runMigrations(dbAddress, migratePath)
+	return db
 }
 
 func (db *DB) Close() {
 	db.Pool.Close()
 }
 
-func runMigrations(dsn string, migratePath string) error {
-	m, err := migrate.New(fmt.Sprintf("file:///%s", migratePath), dsn)
-	if err != nil {
-		return err
-	}
+// func runMigrations(dsn string, migratePath string) error {
+// 	m, err := migrate.New(fmt.Sprintf("file:///%s", migratePath), dsn)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
-	}
+// 	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // func (db *DB) CreateTable() error {
 // 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
@@ -90,6 +90,9 @@ func (db *DB) GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, err
 		&order.SmID, &order.DateCreated, &order.OofShard)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return order, errs.NotFound
+		}
 		return order, err
 	}
 
