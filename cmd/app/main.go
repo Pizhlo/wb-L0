@@ -14,14 +14,18 @@ import (
 func main() {
 	conf := ParseFlags()
 
-	conn, err := storage.Connect(conf.FlagDBAddress)
+	conn, err := storage.Connect(conf.DBAddress)
 	if err != nil {
 		log.Fatal("unable to connect db: ", err)
 	}
 
-	db, err := storage.New(conn)
+	db, err := storage.New(conn, conf.DBAddress,conf.MigratePath)
 	if err != nil {
 		log.Fatal("unable to create db: ", err)
+	}
+
+	if db != nil {
+		defer db.Close()
 	}
 
 	service := service.New(db)
@@ -35,7 +39,7 @@ func run(service *service.Service) chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetByID(w, r, *service)
+		handlers.GetOrderByID(w, r, *service)
 	})
 
 	return r

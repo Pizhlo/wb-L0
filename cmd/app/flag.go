@@ -5,13 +5,15 @@ import (
 )
 
 type Config struct {
-	FlagDBAddress string
+	DBAddress string
+	MigratePath   string
 }
 
 func ParseFlags() Config {
 	var conf Config
 
-	flag.StringVar(&conf.FlagDBAddress, "d", "", "database address")
+	flag.StringVar(&conf.DBAddress, "d", "", "database address")
+	flag.StringVar(&conf.MigratePath, "m", "", "migrate path")
 
 	flag.Parse()
 
