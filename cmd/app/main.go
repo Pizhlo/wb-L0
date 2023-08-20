@@ -19,10 +19,10 @@ func main() {
 		log.Fatal("unable to connect db: ", err)
 	}
 
-	db, err := storage.New(conn, conf.DBAddress,conf.MigratePath)
-	if err != nil {
-		log.Fatal("unable to create db: ", err)
-	}
+	db := storage.New(conn, conf.DBAddress,conf.MigratePath)
+	// if err != nil {
+	// 	log.Fatal("unable to create db: ", err)
+	// }
 
 	if db != nil {
 		defer db.Close()
