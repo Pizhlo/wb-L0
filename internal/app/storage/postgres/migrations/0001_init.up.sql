@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS payments (
     currency currency_enum NOT NULL,
     provider provider_enum NOT NULL,
     amount INT NOT NULL,
-    payment_date text NOT NULL,
+    payment_date int NOT NULL,
     bank TEXT NOT NULL,
     delivery_cost INT NOT NULL,
     goods_total int NOT NULL,
@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE UNIQUE INDEX "payments_unique_id" ON payments(id);
 
 COMMIT;
+
+ALTER TABLE payments ALTER COLUMN payment_date TYPE INT USING payment_date::int;
 
 -- items
 BEGIN TRANSACTION;
@@ -86,8 +88,8 @@ CREATE TABLE IF NOT EXISTS orders (
     date_created TIMESTAMP NOT NULL,
     oof_shard TEXT NOT NULL,
     PRIMARY KEY(id),
-    FOREIGN KEY (delivery_id) REFERENCES delivery (id),
-    FOREIGN KEY (payment_id) REFERENCES payments (id),
-    FOREIGN KEY (track_number) REFERENCES items (track_number)
+    FOREIGN KEY (delivery_id) REFERENCES delivery (id)  ON DELETE CASCADE,
+    FOREIGN KEY (payment_id) REFERENCES payments (id)  ON DELETE CASCADE,
+    FOREIGN KEY (track_number) REFERENCES items (track_number)  ON DELETE CASCADE
 );
 COMMIT;
