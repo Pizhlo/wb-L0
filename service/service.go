@@ -1,22 +1,21 @@
 package service
 
 import (
-	"context"
-
-	"github.com/Pizhlo/wb-L0/models"
-	"github.com/google/uuid"
+	"github.com/Pizhlo/wb-L0/internal/app/storage/postgres"
+	"github.com/Pizhlo/wb-L0/internal/stream/publisher"
+	"github.com/Pizhlo/wb-L0/internal/stream/subscriber"
 )
 
 type Service struct {
-	Storage Storage
+	Storage    postgres.Storage
+	Publisher  publisher.Publish
+	Subscriber subscriber.Subscribe
 }
 
-type Storage interface {
-	GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, error)
-}
-
-func New(storage Storage) *Service {
+func New(storage postgres.Storage, publisher publisher.Publish, subscriber subscriber.Subscribe) *Service {
 	return &Service{
-		Storage: storage,
+		Storage:    storage,
+		Publisher:  publisher,
+		Subscriber: subscriber,
 	}
 }
