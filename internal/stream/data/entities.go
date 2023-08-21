@@ -9,7 +9,9 @@ import (
 func RandomOrder() models.Order {
 	entryEnum := []string{"WBIL"}
 
-	item, trackNumber := randomItem()
+	trackNumber := randomString(10)
+
+	items := randomItemsArr(randomInt(1, 5), trackNumber)
 
 	order := models.Order{
 		ID:          randomInt(0, 50),
@@ -18,7 +20,7 @@ func RandomOrder() models.Order {
 		Entry:       randomChoise(entryEnum),
 		Delivery:    randomDelivery(),
 		Payment:     randomPayment(),
-		Items:       []models.Item{item},
+		Items:       items,
 		Locale:      "en",
 		InternalSignature: sql.NullString{
 			String: "",
@@ -49,9 +51,7 @@ func randomDelivery() models.Delivery {
 	return delivery
 }
 
-func randomItem() (models.Item, string) {
-	trackNumber := randomString(10)
-
+func randomItem(trackNumber string) models.Item {
 	item := models.Item{
 		ID:          randomInt(1, 50),
 		ChrtId:      randomInt(100, 10000),
@@ -67,7 +67,18 @@ func randomItem() (models.Item, string) {
 		Status:      randomInt(100, 200),
 	}
 
-	return item, trackNumber
+	return item
+}
+
+func randomItemsArr(n int, trackNumber string) []models.Item{
+	items := []models.Item{}
+
+	for i := 0; i < n; i++ {
+		item := randomItem(trackNumber)
+		items = append(items, item)
+	}
+
+	return items
 }
 
 func randomPayment() models.Payment {
