@@ -175,7 +175,6 @@ func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
 	return nil
 }
 
-// works
 func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, error) {
 	fmt.Println("starting saving delivery...")
 	q := `INSERT INTO delivery (name, phone, zip, city, address, region, email) VALUES($1, $2, $3, $4, $5, $6, $7)
@@ -194,7 +193,6 @@ func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, 
 	return id, nil
 }
 
-// works
 func (db *DB) savePayment(ctx context.Context, payment models.Payment) (int, error) {
 	fmt.Println("starting saving payment...")
 
@@ -214,8 +212,6 @@ func (db *DB) savePayment(ctx context.Context, payment models.Payment) (int, err
 
 func (db *DB) SaveItem(ctx context.Context, items []models.Item) error {
 	fmt.Println("starting saving items...")
-
-	//fmt.Printf("got these items: %+v\n", items)
 
 	q := `INSERT INTO items (chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 

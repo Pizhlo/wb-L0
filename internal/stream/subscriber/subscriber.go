@@ -16,14 +16,17 @@ type Subscriber struct {
 	*nats.EncodedConn
 }
 
-func New(c *nats.EncodedConn, storage postgres.Storage) *Subscriber {
+func New(c *nats.EncodedConn, storage postgres.Storage) (*Subscriber, error) {
 	subscriber := &Subscriber{c}
 
-	c.Subscribe("foo", func(msg *publisher.Msg) {
-		subscriber.ReceiveMsg(msg, storage)
+	_, err := c.Subscribe("foo", func(msg *publisher.Msg) error {
+		return subscriber.ReceiveMsg(msg, storage)
 	})
+	if err != nil {
+		return subscriber, err
+	}
 
-	return subscriber
+	return subscriber, nil
 
 }
 

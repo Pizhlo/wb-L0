@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/Pizhlo/wb-L0/models"
 )
@@ -67,8 +66,6 @@ func randomItem() (models.Item, string) {
 		Brand:       randomString(10),
 		Status:      randomInt(100, 200),
 	}
-
-	fmt.Println("random status trackNumber = ", item.TrackNumber)
 
 	return item, trackNumber
 }

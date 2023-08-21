@@ -52,10 +52,10 @@ func main() {
 		defer publisher.EncodedConn.Close()
 	}
 
-	subscriber := subscriber.New(publisher.EncodedConn, db)
-	// if err != nil {
-	// 	log.Fatal("unable to create subscriber: ", err)
-	// }
+	subscriber, err := subscriber.New(publisher.EncodedConn, db)
+	if err != nil {
+		log.Fatal("unable to create subscriber: ", err)
+	}
 
 	err = publisher.SendMsg()
 	if err != nil {
