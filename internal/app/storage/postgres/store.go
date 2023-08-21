@@ -223,6 +223,6 @@ func (db *DB) SaveItem(ctx context.Context, items []models.Item) error {
 		}
 	}
 
-	fmt.Println("items saved successfully")
+	fmt.Printf("%d items saved successfully\n", len(items))
 	return nil
 }
