@@ -15,16 +15,12 @@ func randomInt(min, max int) int {
 	return min + rand.Intn(max-min+1)
 }
 
-func randomString(length int) string {
-	b := make([]byte, length)
-	source := rand.New(
-		rand.NewSource(time.Now().UnixNano()))
-	r1 := rand.New(source)
-
-	for i := range b {
-		b[i] = charset[r1.Intn(len(charset))]
-	}
-	return string(b)
+func randomString(n int) string {
+	b := make([]byte, n)
+    for i := range b {
+        b[i] = charset[rand.Intn(len(charset))]
+    }
+    return string(b)
 }
 
 func randomUIID() uuid.UUID {
