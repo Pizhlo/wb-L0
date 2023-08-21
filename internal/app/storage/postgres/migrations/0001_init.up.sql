@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS delivery (
     PRIMARY KEY(id)
 );
 
-CREATE UNIQUE INDEX "delivery_unique_id" ON delivery(id);
-
 COMMIT;
 
 -- payments
@@ -37,33 +35,6 @@ CREATE TABLE IF NOT EXISTS payments (
     custom_fee int NOT NULL,
     PRIMARY KEY(id)
 );
-
-CREATE UNIQUE INDEX "payments_unique_id" ON payments(id);
-
-COMMIT;
-
-ALTER TABLE payments ALTER COLUMN payment_date TYPE INT USING payment_date::int;
-
--- items
-BEGIN TRANSACTION;
-CREATE TABLE IF NOT EXISTS items (
-    id SERIAL NOT NULL,
-    chrt_id INT NOT NULL,
-    track_number TEXT NOT NULL,
-    price int NOT NULL,
-    rid TEXT NOT NULL,
-    name TEXT NOT NULL,
-    sale INT NOT NULL,
-    "size" TEXT NOT NULL,
-    total_price INT NOT NULL,
-    nm_id INT NOT NULL,
-    brand TEXT NOT NULL,
-    status INT NOT NULL,
-    PRIMARY KEY(id)
-);
-
-CREATE UNIQUE INDEX "items_unique_id" ON items(id);
-CREATE UNIQUE INDEX "items_unique_track_number" ON items(track_number);
 
 COMMIT;
 
@@ -89,7 +60,30 @@ CREATE TABLE IF NOT EXISTS orders (
     oof_shard TEXT NOT NULL,
     PRIMARY KEY(id),
     FOREIGN KEY (delivery_id) REFERENCES delivery (id)  ON DELETE CASCADE,
-    FOREIGN KEY (payment_id) REFERENCES payments (id)  ON DELETE CASCADE,
-    FOREIGN KEY (track_number) REFERENCES items (track_number)  ON DELETE CASCADE
+    FOREIGN KEY (payment_id) REFERENCES payments (id)  ON DELETE CASCADE    
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS "orders_unique_track_number" ON orders(track_number);
+
+COMMIT;
+
+-- items
+BEGIN TRANSACTION;
+CREATE TABLE IF NOT EXISTS items (
+    id SERIAL NOT NULL,
+    chrt_id INT NOT NULL,
+    track_number TEXT NOT NULL,
+    price int NOT NULL,
+    rid TEXT NOT NULL,
+    name TEXT NOT NULL,
+    sale INT NOT NULL,
+    "size" TEXT NOT NULL,
+    total_price INT NOT NULL,
+    nm_id INT NOT NULL,
+    brand TEXT NOT NULL,
+    status INT NOT NULL,
+    PRIMARY KEY(id),
+    FOREIGN KEY (track_number) REFERENCES orders (track_number)  ON DELETE CASCADE
+);
+
 COMMIT;
