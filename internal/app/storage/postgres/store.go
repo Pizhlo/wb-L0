@@ -80,9 +80,7 @@ func (db *DB) Close() {
 // }
 
 func (db *DB) GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, error) {
-	order := models.Order{
-		OrderUIID: id,
-	}
+	order := models.Order{}
 
 	q := `SELECT * FROM orders WHERE order_id = $1;`
 

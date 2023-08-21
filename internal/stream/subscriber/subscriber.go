@@ -9,6 +9,7 @@ import (
 )
 
 type Subscribe interface {
+	ReceiveMsg(m *publisher.Msg, storage postgres.Storage) error
 }
 
 type Subscriber struct {

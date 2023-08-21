@@ -8,13 +8,15 @@ type NatsConnection struct {
 	*nats.Conn
 }
 
-func Connect() (*nats.Conn, error) {
+func Connect() (*NatsConnection, error) {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
-		return nc, err
+		return &NatsConnection{}, err
 	}
 
-	return nc, nil
+	ncStruct := &NatsConnection{nc}
+
+	return ncStruct, nil
 }
 
 func (nc *NatsConnection) Close() {

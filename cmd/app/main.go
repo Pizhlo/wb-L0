@@ -44,7 +44,7 @@ func main() {
 	// 	log.Fatal("unable to send msg: ", err)
 	// }
 
-	publisher, err := publisher.New(nc)
+	publisher, err := publisher.New(nc.Conn)
 	if err != nil {
 		log.Fatal("unable to create publisher: ", err)
 	}

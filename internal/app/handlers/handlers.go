@@ -30,11 +30,15 @@ func GetOrderByID(w http.ResponseWriter, r *http.Request, service service.Servic
 			return
 		}
 		log.Default().Println("error while getting order by ID: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	orderJson, err := json.Marshal(order)
 	if err != nil {
 		log.Default().Println("error while making json: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
