@@ -158,18 +158,18 @@ func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
 		return err
 	}
 
-	err = db.SaveItem(ctx, order.Items)
-	if err != nil {
-		return err
-	}
-
 	q := `INSERT INTO orders (order_id, track_number, entry, delivery_id, payment_id, locale, internal_signature, customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard)
 	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err = db.Exec(ctx, q, order.OrderUIID, order.TrackNumber, order.Entry, deliveryID, paymentID, order.Locale, order.InternalSignature, order.CustomerID, order.DeliveryService,
-	order.ShardKey, order.SmID, order.DateCreated, order.OofShard)
+		order.ShardKey, order.SmID, order.DateCreated, order.OofShard)
 	if err != nil {
 		fmt.Println("an error accured while saving order: ", err)
+		return err
+	}
+
+	err = db.SaveItem(ctx, order.Items)
+	if err != nil {
 		return err
 	}
 
@@ -178,7 +178,7 @@ func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
 }
 
 // works
-func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, error)  {
+func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, error) {
 	fmt.Println("starting saving delivery...")
 	q := `INSERT INTO delivery (name, phone, zip, city, address, region, email) VALUES($1, $2, $3, $4, $5, $6, $7)
 	RETURNING id`
@@ -202,7 +202,7 @@ func (db *DB) savePayment(ctx context.Context, payment models.Payment) (int, err
 
 	q := `INSERT INTO payments (transaction, request_id, currency, provider, amount, payment_date, bank, delivery_cost, goods_total, custom_fee) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
 
-	var id int 
+	var id int
 
 	row := db.QueryRow(ctx, q, payment.Transaction, payment.RequestID, payment.Currency, payment.Provider, payment.Amount, payment.PaymentDate, payment.Bank, payment.DeliveryCost, payment.GoodsTotal, payment.CustomFee)
 	err := row.Scan(&id)
@@ -232,4 +232,3 @@ func (db *DB) SaveItem(ctx context.Context, items []models.Item) error {
 	fmt.Println("items saved successfully")
 	return nil
 }
-
