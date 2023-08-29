@@ -8,7 +8,6 @@ import (
 )
 
 type Order struct {
-	ID                int
 	OrderUIID         uuid.UUID      `json:"order_uid" db:"order_id"`
 	TrackNumber       string         `json:"track_number"`
 	Entry             string         `json:"entry"`

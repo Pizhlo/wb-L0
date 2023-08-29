@@ -3,7 +3,6 @@ package models
 import uuid "github.com/google/uuid"
 
 type Item struct {
-	ID          int
 	ChrtId      int       `json:"chrt_id"`
 	TrackNumber string    `json:"track_number"`
 	Price       int       `json:"price"`
