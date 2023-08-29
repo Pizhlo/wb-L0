@@ -7,13 +7,12 @@ import (
 
 	"log"
 
-	"github.com/Pizhlo/wb-L0/errs"
-	"github.com/Pizhlo/wb-L0/service"
+	"github.com/Pizhlo/wb-L0/internal/app/errs"
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
 
-func GetOrderByID(w http.ResponseWriter, r *http.Request, service service.Service) {
+func GetOrderByID(w http.ResponseWriter, r *http.Request, handler Order) {
 	id := chi.URLParam(r, "id")
 
 	uuid, err := uuid.Parse(id)
@@ -23,7 +22,7 @@ func GetOrderByID(w http.ResponseWriter, r *http.Request, service service.Servic
 		return
 	}
 
-	order, err := service.Storage.GetOrderByID(r.Context(), uuid)
+	order, err := handler.service.Repo.GetOrderByID(r.Context(), uuid)
 	if err != nil {
 		if errors.Is(err, errs.NotFound) {
 			w.WriteHeader(http.StatusNotFound)
