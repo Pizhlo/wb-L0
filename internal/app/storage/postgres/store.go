@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Pizhlo/wb-L0/errs"
-	"github.com/Pizhlo/wb-L0/models"
+	"github.com/Pizhlo/wb-L0/internal/app/errs"
+	models "github.com/Pizhlo/wb-L0/internal/model"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
@@ -14,78 +14,37 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Storage interface {
-	GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, error)
+type Repo interface {
+	GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order, error)
 	SaveOrder(ctx context.Context, order models.Order) error
-	SaveItem(ctx context.Context, items []models.Item) error
+	GetPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Payment, error)
+	SavePayment(ctx context.Context, payment models.Payment) (int, error)
+	GetDeliveryByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Delivery, error)
+	SaveDelivery(ctx context.Context, delivery models.Delivery) (int, error)
+	SaveItems(ctx context.Context, items []models.Item) error
+	GetItemByTrackNumber(ctx context.Context, trackNumber string) ([]models.Item, error)
 }
 
-type DB struct {
+type Store struct {
 	*pgxpool.Pool
 }
 
-// postgresql://root:secret@localhost:8081/wb_db?sslmode=disable
-
-func New(conn *pgxpool.Pool, dbAddress string, migratePath string) *DB {
-	db := &DB{conn}
+func New(conn *pgxpool.Pool) *Store {
+	db := &Store{conn}
 	return db
 }
 
-func (db *DB) Close() {
+func (db *Store) Close() {
 	db.Pool.Close()
 }
 
-// func runMigrations(dsn string, migratePath string) error {
-// 	m, err := migrate.New(fmt.Sprintf("file:///%s", migratePath), dsn)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// func (db *DB) CreateTable() error {
-// 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
-// 	defer cancel()
-
-// 	q := `CREATE TABLE IF NOT EXISTS "user"(id serial NOT NULL,
-// 		login text NOT NULL,
-// 		password text NOT NULL,
-// 		created TIMESTAMP NOT NULL DEFAULT 'now()'
-// 	);
-
-// CREATE UNIQUE INDEX IF NOT EXISTS "user_login" ON "user" ("login");`
-
-// 	txOptions := pgx.TxOptions{
-// 		IsoLevel: pgx.ReadCommitted,
-// 	}
-
-// 	tx, err := db.BeginTx(ctx, txOptions)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = tx.Exec(ctx, q)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	defer tx.Rollback(ctx)
-
-// 	return tx.Commit(ctx)
-// }
-
-func (db *DB) GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, error) {
-	order := models.Order{}
+func (db *Store) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order, error) {
+	order := &models.Order{}
 
 	q := `SELECT * FROM orders WHERE order_id = $1;`
 
 	row := db.QueryRow(ctx, q, id)
-	err := row.Scan(&order.ID, &order.OrderUIID, &order.TrackNumber, &order.Entry, &order.Delivery.ID, &order.Payment.ID,
+	err := row.Scan(&order.OrderUIID, &order.TrackNumber, &order.Entry, &order.Delivery.ID, &order.Payment.ID,
 		&order.Locale, &order.InternalSignature, &order.CustomerID, &order.DeliveryService, &order.ShardKey,
 		&order.SmID, &order.DateCreated, &order.OofShard)
 
@@ -96,41 +55,25 @@ func (db *DB) GetOrderByID(ctx context.Context, id uuid.UUID) (models.Order, err
 		return order, err
 	}
 
-	delivery, err := db.getDeliveryByOrderID(ctx, id)
-	if err != nil {
-		return order, err
-	}
+	// delivery, err := db.getDeliveryByOrderID(ctx, id)
+	// if err != nil {
+	// 	return order, err
+	// }
 
-	order.Delivery = delivery
+	// order.Delivery = delivery
 
-	payment, err := db.getPaymentByOrderID(ctx, id)
-	if err != nil {
-		return order, err
-	}
+	// payment, err := db.getPaymentByOrderID(ctx, id)
+	// if err != nil {
+	// 	return order, err
+	// }
 
-	order.Payment = payment
+	// order.Payment = payment
 
 	return order, nil
 }
 
-func (db *DB) getDeliveryByOrderID(ctx context.Context, orderId uuid.UUID) (models.Delivery, error) {
-	delivery := models.Delivery{}
-
-	q := `SELECT * FROM delivery WHERE id = (SELECT delivery_id FROM orders WHERE order_id = $1);`
-
-	row := db.QueryRow(ctx, q, orderId)
-	err := row.Scan(&delivery.ID, &delivery.Name, &delivery.Phone, &delivery.Zip, &delivery.City, &delivery.Address, &delivery.Region,
-		&delivery.Email)
-
-	if err != nil {
-		return delivery, err
-	}
-
-	return delivery, nil
-}
-
-func (db *DB) getPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (models.Payment, error) {
-	payment := models.Payment{}
+func (db *Store) GetPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Payment, error) {
+	payment := &models.Payment{}
 
 	q := `SELECT * FROM payments WHERE id = (SELECT payment_id FROM orders WHERE order_id = $1);`
 
@@ -144,14 +87,14 @@ func (db *DB) getPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (model
 	return payment, nil
 }
 
-func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
+func (db *Store) SaveOrder(ctx context.Context, order models.Order) error {
 	fmt.Println("starting saving order...")
-	deliveryID, err := db.saveDelivery(ctx, order.Delivery)
+	deliveryID, err := db.SaveDelivery(ctx, order.Delivery)
 	if err != nil {
 		return err
 	}
 
-	paymentID, err := db.savePayment(ctx, order.Payment)
+	paymentID, err := db.SavePayment(ctx, order.Payment)
 	if err != nil {
 		return err
 	}
@@ -166,7 +109,7 @@ func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
 		return err
 	}
 
-	err = db.SaveItem(ctx, order.Items)
+	err = db.SaveItems(ctx, order.Items)
 	if err != nil {
 		return err
 	}
@@ -175,7 +118,40 @@ func (db *DB) SaveOrder(ctx context.Context, order models.Order) error {
 	return nil
 }
 
-func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, error) {
+func (db *Store) SavePayment(ctx context.Context, payment models.Payment) (int, error) {
+	fmt.Println("starting saving payment...")
+
+	q := `INSERT INTO payments (transaction, request_id, currency, provider, amount, payment_date, bank, delivery_cost, goods_total, custom_fee) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
+
+	var id int
+
+	row := db.QueryRow(ctx, q, payment.Transaction, payment.RequestID, payment.Currency, payment.Provider, payment.Amount, payment.PaymentDate, payment.Bank, payment.DeliveryCost, payment.GoodsTotal, payment.CustomFee)
+	err := row.Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println("payment saved successfully")
+	return id, nil
+}
+
+func (db *Store) GetDeliveryByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Delivery, error) {
+	delivery := &models.Delivery{}
+
+	q := `SELECT * FROM delivery WHERE id = (SELECT delivery_id FROM orders WHERE order_id = $1);`
+
+	row := db.QueryRow(ctx, q, orderId)
+	err := row.Scan(&delivery.Name, &delivery.Phone, &delivery.Zip, &delivery.City, &delivery.Address, &delivery.Region,
+		&delivery.Email)
+
+	if err != nil {
+		return delivery, err
+	}
+
+	return delivery, nil
+}
+
+func (db *Store) SaveDelivery(ctx context.Context, delivery models.Delivery) (int, error) {
 	fmt.Println("starting saving delivery...")
 	q := `INSERT INTO delivery (name, phone, zip, city, address, region, email) VALUES($1, $2, $3, $4, $5, $6, $7)
 	RETURNING id`
@@ -193,24 +169,7 @@ func (db *DB) saveDelivery(ctx context.Context, delivery models.Delivery) (int, 
 	return id, nil
 }
 
-func (db *DB) savePayment(ctx context.Context, payment models.Payment) (int, error) {
-	fmt.Println("starting saving payment...")
-
-	q := `INSERT INTO payments (transaction, request_id, currency, provider, amount, payment_date, bank, delivery_cost, goods_total, custom_fee) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
-
-	var id int
-
-	row := db.QueryRow(ctx, q, payment.Transaction, payment.RequestID, payment.Currency, payment.Provider, payment.Amount, payment.PaymentDate, payment.Bank, payment.DeliveryCost, payment.GoodsTotal, payment.CustomFee)
-	err := row.Scan(&id)
-	if err != nil {
-		return 0, err
-	}
-
-	fmt.Println("payment saved successfully")
-	return id, nil
-}
-
-func (db *DB) SaveItem(ctx context.Context, items []models.Item) error {
+func (db *Store) SaveItems(ctx context.Context, items []models.Item) error {
 	fmt.Println("starting saving items...")
 
 	q := `INSERT INTO items (chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
@@ -225,4 +184,28 @@ func (db *DB) SaveItem(ctx context.Context, items []models.Item) error {
 
 	fmt.Printf("%d items saved successfully\n", len(items))
 	return nil
+}
+
+func (db *Store) GetItemByTrackNumber(ctx context.Context, trackNumber string) ([]models.Item, error) {
+	items := []models.Item{}
+
+	q := `SELECT * FROM items WHERE track_number = $1`
+
+	rows, err := db.Query(ctx, q, trackNumber)
+	if err != nil {
+		return items, err
+	}
+
+	for rows.Next() {
+		item := models.Item{}
+		err := rows.Scan(&item.ID, item.ChrtId, item.TrackNumber, item.Price, item.RID, item.Name, item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status)
+		if err != nil {
+			return items, err
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
+
 }
