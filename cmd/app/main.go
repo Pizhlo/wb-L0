@@ -81,15 +81,9 @@ func run(service *service.Service, order handler.Order) chi.Router {
 }
 
 func makeCache() *cache.Cache {
-	delivery := cache.NewDelivery()
-	payment := cache.NewPayment()
-	item := cache.NewItem()
 	order := cache.NewOrder()
 
 	return &cache.Cache{
-		Order:    order,
-		Delivery: delivery,
-		Item:     item,
-		Payment:  payment,
+		Order: order,
 	}
 }
