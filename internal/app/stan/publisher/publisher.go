@@ -1,9 +1,11 @@
 package publisher
 
 import (
-	"github.com/Pizhlo/wb-L0/internal/stream/data"
-	"github.com/Pizhlo/wb-L0/models"
-	"github.com/nats-io/nats.go"
+	"encoding/json"
+
+	"github.com/Pizhlo/wb-L0/internal/app/stan/data"
+	models "github.com/Pizhlo/wb-L0/internal/model"
+	"github.com/nats-io/stan.go"
 )
 
 type Publish interface {
@@ -11,19 +13,15 @@ type Publish interface {
 }
 
 type Publisher struct {
-	*nats.EncodedConn
+	stan.Conn
 }
 
 type Msg struct {
 	Order models.Order
 }
 
-func New(nc *nats.Conn) (*Publisher, error) {
-	c, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
-	if err != nil {
-		return &Publisher{}, err
-	}
-	return &Publisher{c}, nil
+func New(nc stan.Conn) (*Publisher, error) {
+	return &Publisher{nc}, nil
 }
 
 func (p *Publisher) SendMsg() error {
@@ -31,5 +29,11 @@ func (p *Publisher) SendMsg() error {
 	order := data.RandomOrder()
 	msg.Order = order
 
-	return p.Publish("foo", msg)
+	data, err := json.Marshal(msg)
+
+	if err != nil {
+		return err
+	}
+
+	return p.Publish("test", data)
 }
