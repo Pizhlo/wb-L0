@@ -8,3 +8,12 @@ services:
       POSTGRES_PASSWORD: "secret"
     ports:
       - "8081:5432"
+  nats:
+    image: nats-streaming:latest
+    container_name: nats
+    ports:
+      - "4222:4222"
+    environment:
+      - STAN_CLUSTER_ID=my_cluster
+    command: ["--cluster_id=my_cluster"]
+    
