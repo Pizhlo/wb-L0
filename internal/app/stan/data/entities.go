@@ -3,18 +3,17 @@ package data
 import (
 	"database/sql"
 
-	"github.com/Pizhlo/wb-L0/models"
+	model "github.com/Pizhlo/wb-L0/internal/model"
 )
 
-func RandomOrder() models.Order {
+func RandomOrder() model.Order {
 	entryEnum := []string{"WBIL"}
 
 	trackNumber := randomString(10)
 
 	items := randomItemsArr(randomInt(1, 5), trackNumber)
 
-	order := models.Order{
-		ID:          randomInt(0, 50),
+	order := model.Order{
 		OrderUIID:   randomUIID(),
 		TrackNumber: trackNumber,
 		Entry:       randomChoise(entryEnum),
@@ -37,8 +36,8 @@ func RandomOrder() models.Order {
 	return order
 }
 
-func randomDelivery() models.Delivery {
-	delivery := models.Delivery{
+func randomDelivery() model.Delivery {
+	delivery := model.Delivery{
 		Name:    randomString(10),
 		Phone:   randomPhone(),
 		Zip:     randomString(6),
@@ -51,8 +50,8 @@ func randomDelivery() models.Delivery {
 	return delivery
 }
 
-func randomItem(trackNumber string) models.Item {
-	item := models.Item{
+func randomItem(trackNumber string) model.Item {
+	item := model.Item{
 		ID:          randomInt(1, 50),
 		ChrtId:      randomInt(100, 10000),
 		TrackNumber: trackNumber,
@@ -70,8 +69,8 @@ func randomItem(trackNumber string) models.Item {
 	return item
 }
 
-func randomItemsArr(n int, trackNumber string) []models.Item{
-	items := []models.Item{}
+func randomItemsArr(n int, trackNumber string) []model.Item {
+	items := []model.Item{}
 
 	for i := 0; i < n; i++ {
 		item := randomItem(trackNumber)
@@ -81,11 +80,11 @@ func randomItemsArr(n int, trackNumber string) []models.Item{
 	return items
 }
 
-func randomPayment() models.Payment {
+func randomPayment() model.Payment {
 	currencyEnum := []string{"USD", "RUB"}
 	providerEnum := []string{"wbpay"}
 
-	payment := models.Payment{
+	payment := model.Payment{
 		ID:          randomInt(1, 20),
 		Transaction: randomUIID(),
 		RequestID: sql.NullString{
@@ -93,6 +92,7 @@ func randomPayment() models.Payment {
 		},
 		Currency:     randomChoise(currencyEnum),
 		Provider:     randomChoise(providerEnum),
+		Amount:       randomInt(100, 2500),
 		PaymentDate:  randomTimeISO(),
 		Bank:         "alpha",
 		DeliveryCost: randomInt(700, 1500),
