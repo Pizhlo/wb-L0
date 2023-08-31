@@ -1,58 +1,58 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi"
-
-	handlers "github.com/Pizhlo/wb-L0/internal/app/handlers"
+	"github.com/Pizhlo/wb-L0/config"
+	handler "github.com/Pizhlo/wb-L0/internal/app/handler"
+	"github.com/Pizhlo/wb-L0/internal/app/stan/publisher"
+	"github.com/Pizhlo/wb-L0/internal/app/stan/subscriber"
+	"github.com/Pizhlo/wb-L0/internal/app/storage/cache"
 	storage "github.com/Pizhlo/wb-L0/internal/app/storage/postgres"
-	stream "github.com/Pizhlo/wb-L0/internal/stream"
-	"github.com/Pizhlo/wb-L0/internal/stream/publisher"
-	"github.com/Pizhlo/wb-L0/internal/stream/subscriber"
-	"github.com/Pizhlo/wb-L0/service"
+	"github.com/Pizhlo/wb-L0/internal/service"
+	"github.com/go-chi/chi"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/stan.go"
 )
 
 func main() {
-	conf := ParseFlags()
-
-	conn, err := storage.Connect(conf.DBAddress)
+	// loading config
+	conf, err := config.LoadConfig("../..")
 	if err != nil {
-		log.Fatal("unable to connect db: ", err)
+		log.Fatal("unable to load config: ", err)
 	}
 
-	db := storage.New(conn, conf.DBAddress, conf.MigratePath)
-	// if err != nil {
-	// 	log.Fatal("unable to create db: ", err)
-	// }
-
-	if db != nil {
-		defer db.Close()
-	}
-
-	nc, err := stream.Connect()
+	// creating new connection to db
+	conn, err := pgxpool.New(context.Background(), conf.DBAddress)
 	if err != nil {
-		log.Fatal("unable to connect nats: ", err)
+		log.Fatal("unable to create connection: ", err)
 	}
 
-	if nc != nil {
-		defer nc.Close()
+	// creating db
+	db := storage.New(conn)
+	defer db.Close()
+
+	// creating cache
+	cache := makeCache()
+
+	// creating stan conn, subscriber, publisher
+	stanConn, err := stan.Connect("my_cluster", "test")
+	if err != nil {
+		log.Fatal("unable to connect stan: ", err)
 	}
 
-	// err = nc.Publish("foo", []byte("check conntection")); if err != nil {
-	// 	log.Fatal("unable to send msg: ", err)
-	// }
-
-	publisher, err := publisher.New(nc.Conn)
+	publisher, err := publisher.New(stanConn)
 	if err != nil {
 		log.Fatal("unable to create publisher: ", err)
 	}
-	if publisher != nil {
-		defer publisher.EncodedConn.Close()
-	}
 
-	subscriber, err := subscriber.New(publisher.EncodedConn, db)
+	service := service.New(db, cache)
+
+	log.Println("starting server")
+
+	err = subscriber.New(stanConn, *service)
 	if err != nil {
 		log.Fatal("unable to create subscriber: ", err)
 	}
@@ -61,21 +61,35 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to send msg: ", err)
 	}
-	
-	service := service.New(db, publisher, subscriber)
 
-	if err := http.ListenAndServe(":8080", run(service)); err != nil {
+	handler := handler.NewOrder(*service)
+
+	// starting server
+	if err := http.ListenAndServe(":8080", run(service, *handler)); err != nil {
 		log.Fatal("error while executing server: ", err)
 	}
-
 }
 
-func run(service *service.Service) chi.Router {
+func run(service *service.Service, order handler.Order) chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetOrderByID(w, r, *service)
+		handler.GetOrderByID(w, r, order)
 	})
 
 	return r
+}
+
+func makeCache() *cache.Cache {
+	delivery := cache.NewDelivery()
+	payment := cache.NewPayment()
+	item := cache.NewItem()
+	order := cache.NewOrder()
+
+	return &cache.Cache{
+		Order:    order,
+		Delivery: delivery,
+		Item:     item,
+		Payment:  payment,
+	}
 }
