@@ -20,5 +20,5 @@ func Connect() (*NatsConnection, error) {
 }
 
 func (nc *NatsConnection) Close() {
-	nc.Close()
+	nc.Conn.Close()
 }
