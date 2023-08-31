@@ -1,4 +1,4 @@
-package internal
+package handler
 
 import (
 	"encoding/json"
@@ -42,5 +42,10 @@ func GetOrderByID(w http.ResponseWriter, r *http.Request, handler Order) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	w.Write(orderJson)
+	_, err = w.Write(orderJson)
+	if err != nil {
+		log.Default().Println("error while writing json: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
