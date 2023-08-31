@@ -1,4 +1,4 @@
-package internal
+package handler
 
 import "github.com/Pizhlo/wb-L0/internal/service"
 
