@@ -4,6 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Pizhlo/wb-L0/config"
 	handler "github.com/Pizhlo/wb-L0/internal/app/handler"
@@ -13,11 +17,18 @@ import (
 	storage "github.com/Pizhlo/wb-L0/internal/app/storage/postgres"
 	"github.com/Pizhlo/wb-L0/internal/service"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/stan.go"
 )
 
 func main() {
+	serverCtx, serverStopCtx := context.WithCancel(context.Background())
+
+	// Listen for syscall signals for process to interrupt/quit
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	// loading config
 	conf, err := config.LoadConfig("../..")
 	if err != nil {
@@ -25,7 +36,7 @@ func main() {
 	}
 
 	// creating new connection to db
-	conn, err := pgxpool.New(context.Background(), conf.DBAddress)
+	conn, err := pgxpool.New(serverCtx, conf.DBAddress)
 	if err != nil {
 		log.Fatal("unable to create connection: ", err)
 	}
@@ -43,10 +54,7 @@ func main() {
 		log.Fatal("unable to connect stan: ", err)
 	}
 
-	publisher, err := publisher.New(stanConn)
-	if err != nil {
-		log.Fatal("unable to create publisher: ", err)
-	}
+	publisher := publisher.New(stanConn)
 
 	service := service.New(db, cache)
 
@@ -57,21 +65,66 @@ func main() {
 		log.Fatal("unable to create subscriber: ", err)
 	}
 
-	err = publisher.SendMsg()
+	ticker := startTicker(serverCtx)
+	done := make(chan bool)
+
+	err = publisher.Start(ticker, done)
 	if err != nil {
 		log.Fatal("unable to send msg: ", err)
 	}
 
 	handler := handler.NewOrder(*service)
 
-	// starting server
-	if err := http.ListenAndServe(":8080", run(service, *handler)); err != nil {
-		log.Fatal("error while executing server: ", err)
+	err = service.Recover(serverCtx)
+	if err != nil {
+		log.Fatal("unable to recover data: ", err)
 	}
+
+	server := &http.Server{Addr: "0.0.0.0:5557", Handler: router(service, *handler)}
+
+	go func() {
+		<-sig
+
+		// Shutdown signal with grace period of 30 seconds
+		shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
+		defer cancel()
+
+		go func() {
+			<-shutdownCtx.Done()
+			if shutdownCtx.Err() == context.DeadlineExceeded {
+				log.Fatal("graceful shutdown timed out.. forcing exit.")
+			}
+		}()
+
+		// Trigger graceful shutdown
+		err := server.Shutdown(shutdownCtx)
+		if err != nil {
+			log.Fatal("error while shutdown server: ", err)
+		}
+		serverStopCtx()
+	}()
+
+	// starting server
+	err = server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal("error while starting server: ", err)
+	}
+
+	// Wait for server context to be stopped
+	<-serverCtx.Done()
+
 }
 
-func run(service *service.Service, order handler.Order) chi.Router {
+func router(service *service.Service, order handler.Order) http.Handler {
 	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+
+	//templates := template.Must(template.ParseGlob("templates/*"))
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		handler.LoadMainPg(w, r, order)
+	})
 
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handler.GetOrderByID(w, r, order)
@@ -83,7 +136,11 @@ func run(service *service.Service, order handler.Order) chi.Router {
 func makeCache() *cache.Cache {
 	order := cache.NewOrder()
 
-	return &cache.Cache{
-		Order: order,
-	}
+	return cache.New(order)
+}
+
+func startTicker(ctx context.Context) *time.Ticker {
+	ticker := time.NewTicker(1 * time.Minute)
+
+	return ticker
 }
