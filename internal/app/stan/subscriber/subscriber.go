@@ -9,6 +9,7 @@ import (
 	"github.com/Pizhlo/wb-L0/internal/app/storage/postgres"
 	"github.com/Pizhlo/wb-L0/internal/service"
 	"github.com/nats-io/stan.go"
+	"github.com/pkg/errors"
 )
 
 type Subscribe interface {
@@ -31,7 +32,7 @@ func New(nc stan.Conn, service service.Service) error {
 		}
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Subscriber: cannot subscribe")
 	}
 
 	return nil
@@ -46,12 +47,12 @@ func (s *Subscriber) ReceiveMsg(m []byte) error {
 
 	err := json.Unmarshal(m, &msg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Subscriber: cannot unmarshal json")
 	}
 
 	err = s.service.SaveOrder(ctx, msg.Order)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Subscriber: cannot save order")
 	}
 
 	return nil
