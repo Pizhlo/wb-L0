@@ -1,10 +1,6 @@
 package config
 
 import (
-	"context"
-	"os/signal"
-	"syscall"
-
 	"github.com/spf13/viper"
 )
 
@@ -20,9 +16,6 @@ func LoadConfig(path string) (Config, error) {
 	viper.AutomaticEnv()
 
 	conf := Config{}
-
-	_, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGSTOP, syscall.SIGTERM)
-	defer cancel()
 
 	err := viper.ReadInConfig()
 	if err != nil {
