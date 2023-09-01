@@ -2,6 +2,7 @@ package stream
 
 import (
 	"github.com/nats-io/nats.go"
+	"github.com/pkg/errors"
 )
 
 type NatsConnection struct {
@@ -11,7 +12,7 @@ type NatsConnection struct {
 func Connect() (*NatsConnection, error) {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
-		return &NatsConnection{}, err
+		return &NatsConnection{}, errors.Wrap(err, "unable to connect nats")
 	}
 
 	ncStruct := &NatsConnection{nc}
