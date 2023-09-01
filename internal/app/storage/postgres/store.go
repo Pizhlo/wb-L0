@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pkg_errs "github.com/pkg/errors"
 )
 
 type Repo interface {
@@ -23,6 +24,7 @@ type Repo interface {
 	SaveDelivery(ctx context.Context, delivery models.Delivery) (int, error)
 	SaveItems(ctx context.Context, items []models.Item) error
 	GetItemByTrackNumber(ctx context.Context, trackNumber string) ([]models.Item, error)
+	GetAll(ctx context.Context) ([]models.Order, error)
 }
 
 type Store struct {
@@ -39,6 +41,7 @@ func (db *Store) Close() {
 }
 
 func (db *Store) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order, error) {
+	fmt.Println("getting  order from db")
 	order := &models.Order{}
 
 	q := `SELECT * FROM orders WHERE order_id = $1;`
@@ -50,24 +53,31 @@ func (db *Store) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order,
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return order, errs.NotFound
+			return order, pkg_errs.Wrap(errs.NotFound, "not found order")
 		}
 		return order, err
 	}
 
-	// delivery, err := db.getDeliveryByOrderID(ctx, id)
-	// if err != nil {
-	// 	return order, err
-	// }
+	delivery, err := db.GetDeliveryByOrderID(ctx, id)
+	if err != nil {
+		return order, pkg_errs.Wrap(err, "err while getting delivery from db")
+	}
 
-	// order.Delivery = delivery
+	order.Delivery = *delivery
 
-	// payment, err := db.getPaymentByOrderID(ctx, id)
-	// if err != nil {
-	// 	return order, err
-	// }
+	payment, err := db.GetPaymentByOrderID(ctx, id)
+	if err != nil {
+		return order, pkg_errs.Wrap(err, "err while getting payment from db")
+	}
 
-	// order.Payment = payment
+	order.Payment = *payment
+
+	items, err := db.GetItemByTrackNumber(ctx, order.TrackNumber)
+	if err != nil {
+		return order, pkg_errs.Wrap(err, "err while getting items from db")
+	}
+
+	order.Items = items
 
 	return order, nil
 }
@@ -81,7 +91,7 @@ func (db *Store) GetPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (*m
 	err := row.Scan(&payment.ID, &payment.Transaction, &payment.RequestID, &payment.Currency, &payment.Provider, &payment.Amount,
 		&payment.PaymentDate, &payment.Bank, &payment.DeliveryCost, &payment.GoodsTotal, &payment.CustomFee)
 	if err != nil {
-		return payment, err
+		return payment, pkg_errs.Wrap(err, "err while getting payment by id from db")
 	}
 
 	return payment, nil
@@ -105,7 +115,6 @@ func (db *Store) SaveOrder(ctx context.Context, order models.Order) error {
 	_, err = db.Exec(ctx, q, order.OrderUIID, order.TrackNumber, order.Entry, deliveryID, paymentID, order.Locale, order.InternalSignature, order.CustomerID, order.DeliveryService,
 		order.ShardKey, order.SmID, order.DateCreated, order.OofShard)
 	if err != nil {
-		fmt.Println("an error accured while saving order: ", err)
 		return err
 	}
 
@@ -128,7 +137,7 @@ func (db *Store) SavePayment(ctx context.Context, payment models.Payment) (int, 
 	row := db.QueryRow(ctx, q, payment.Transaction, payment.RequestID, payment.Currency, payment.Provider, payment.Amount, payment.PaymentDate, payment.Bank, payment.DeliveryCost, payment.GoodsTotal, payment.CustomFee)
 	err := row.Scan(&id)
 	if err != nil {
-		return 0, err
+		return 0, pkg_errs.Wrap(err, "error while saving payment to db")
 	}
 
 	fmt.Println("payment saved successfully")
@@ -141,11 +150,11 @@ func (db *Store) GetDeliveryByOrderID(ctx context.Context, orderId uuid.UUID) (*
 	q := `SELECT * FROM delivery WHERE id = (SELECT delivery_id FROM orders WHERE order_id = $1);`
 
 	row := db.QueryRow(ctx, q, orderId)
-	err := row.Scan(&delivery.Name, &delivery.Phone, &delivery.Zip, &delivery.City, &delivery.Address, &delivery.Region,
+	err := row.Scan(&delivery.ID, &delivery.Name, &delivery.Phone, &delivery.Zip, &delivery.City, &delivery.Address, &delivery.Region,
 		&delivery.Email)
 
 	if err != nil {
-		return delivery, err
+		return delivery, pkg_errs.Wrap(err, "error while getting delivery from db")
 	}
 
 	return delivery, nil
@@ -161,7 +170,7 @@ func (db *Store) SaveDelivery(ctx context.Context, delivery models.Delivery) (in
 
 	err := row.Scan(&id)
 	if err != nil {
-		return 0, err
+		return 0, pkg_errs.Wrap(err, "error while saving delivery to db")
 	}
 
 	fmt.Println("delivery saved successfully")
@@ -177,8 +186,7 @@ func (db *Store) SaveItems(ctx context.Context, items []models.Item) error {
 	for _, item := range items {
 		_, err := db.Exec(ctx, q, item.ChrtId, item.TrackNumber, item.Price, item.RID, item.Name, item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status)
 		if err != nil {
-			fmt.Println("an error accured while saving item: ", err)
-			return err
+			return pkg_errs.Wrap(err, "error while saving items to db")
 		}
 	}
 
@@ -193,19 +201,73 @@ func (db *Store) GetItemByTrackNumber(ctx context.Context, trackNumber string) (
 
 	rows, err := db.Query(ctx, q, trackNumber)
 	if err != nil {
-		return items, err
+		return items, pkg_errs.Wrap(err, "error while getting items by track number from db")
 	}
 
 	for rows.Next() {
 		item := models.Item{}
-		err := rows.Scan(&item.ID, item.ChrtId, item.TrackNumber, item.Price, item.RID, item.Name, item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status)
+		err := rows.Scan(&item.ChrtId, &item.TrackNumber, &item.Price, &item.RID, &item.Name, &item.Sale, &item.Size, &item.TotalPrice, &item.NmID, &item.Brand, &item.Status)
 		if err != nil {
-			return items, err
+			return items, pkg_errs.Wrap(err, "error while getting items by track number from db")
 		}
 
 		items = append(items, item)
 	}
 
 	return items, nil
+}
 
+// используется для восстановления в случае падения сервиса
+func (db *Store) GetAll(ctx context.Context) ([]models.Order, error) {
+	orders, err := db.getAllOrders(ctx)
+	if err != nil {
+		return orders, pkg_errs.Wrap(err, "error while recovering all orders from db")
+	}
+
+	for _, val := range orders {
+		delivery, err := db.GetDeliveryByOrderID(ctx, val.OrderUIID)
+		if err != nil {
+			return orders, pkg_errs.Wrap(err, "error while recovering all delivery from db")
+		}
+		val.Delivery = *delivery
+
+		items, err := db.GetItemByTrackNumber(ctx, val.TrackNumber)
+		if err != nil {
+			return orders, pkg_errs.Wrap(err, "error while recovering all items from db")
+		}
+		val.Items = items
+
+		payment, err := db.GetPaymentByOrderID(ctx, val.OrderUIID)
+		if err != nil {
+			return orders, pkg_errs.Wrap(err, "error while recovering all payments from db")
+		}
+		val.Payment = *payment
+	}
+
+	return orders, nil
+}
+
+func (db *Store) getAllOrders(ctx context.Context) ([]models.Order, error) {
+	orders := []models.Order{}
+
+	q := `SELECT * FROM orders`
+
+	rows, err := db.Query(ctx, q)
+	if err != nil {
+		return orders, pkg_errs.Wrap(err, "error while getting all orders from db")
+	}
+
+	for rows.Next() {
+		order := models.Order{}
+		err := rows.Scan(&order.OrderUIID, &order.TrackNumber, &order.Entry, &order.Delivery.ID, &order.Payment.ID,
+			&order.Locale, &order.InternalSignature, &order.CustomerID, &order.DeliveryService, &order.ShardKey,
+			&order.SmID, &order.DateCreated, &order.OofShard)
+		if err != nil {
+			return orders, pkg_errs.Wrap(err, "error while scanning all orders from db")
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
 }
