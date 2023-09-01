@@ -18,7 +18,7 @@ func (s *Service) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order
 		return order, nil
 	}
 
-	if !errors.Is(err, errs.NilOrder) {
+	if !errors.Is(err, errs.NotFound) {
 		return order, err
 	}
 
@@ -73,5 +73,15 @@ func (s *Service) saveOrderInDB(ctx context.Context, order models.Order) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Service) Recover(ctx context.Context) error {
+	orders, err := s.Repo.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.Cache.Order.SaveAll(orders)
 	return nil
 }
