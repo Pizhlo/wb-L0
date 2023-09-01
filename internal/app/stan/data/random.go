@@ -17,10 +17,10 @@ func randomInt(min, max int) int {
 
 func randomString(n int) string {
 	b := make([]byte, n)
-    for i := range b {
-        b[i] = charset[rand.Intn(len(charset))]
-    }
-    return string(b)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
 
 func randomUIID() uuid.UUID {
@@ -36,8 +36,8 @@ func randomTimeISO() int64 {
 }
 
 func randomChoise(slice []string) string {
-	source := rand.New(
-		rand.NewSource(time.Now().UnixNano()))
+	source := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	r1 := rand.New(source)
 
 	n := r1.Int() % len(slice)
