@@ -1,8 +1,6 @@
 package data
 
 import (
-	"database/sql"
-
 	model "github.com/Pizhlo/wb-L0/internal/model"
 )
 
@@ -13,24 +11,23 @@ func RandomOrder() model.Order {
 
 	items := randomItemsArr(randomInt(1, 5), trackNumber)
 
+	var a *string
+
 	order := model.Order{
-		OrderUIID:   randomUIID(),
-		TrackNumber: trackNumber,
-		Entry:       randomChoise(entryEnum),
-		Delivery:    randomDelivery(),
-		Payment:     randomPayment(),
-		Items:       items,
-		Locale:      "en",
-		InternalSignature: sql.NullString{
-			String: "",
-			Valid:  false,
-		},
-		CustomerID:      randomString(3),
-		DeliveryService: "meest",
-		ShardKey:        randomString(1),
-		SmID:            randomInt(1, 100),
-		DateCreated:     randomTime(),
-		OofShard:        randomString(1),
+		OrderUIID:         randomUIID(),
+		TrackNumber:       trackNumber,
+		Entry:             randomChoise(entryEnum),
+		Delivery:          randomDelivery(),
+		Payment:           randomPayment(),
+		Items:             items,
+		Locale:            "en",
+		InternalSignature: a,
+		CustomerID:        randomString(3),
+		DeliveryService:   "meest",
+		ShardKey:          randomString(1),
+		SmID:              randomInt(1, 100),
+		DateCreated:       randomTime(),
+		OofShard:          randomString(1),
 	}
 
 	return order
@@ -52,7 +49,6 @@ func randomDelivery() model.Delivery {
 
 func randomItem(trackNumber string) model.Item {
 	item := model.Item{
-		ID:          randomInt(1, 50),
 		ChrtId:      randomInt(100, 10000),
 		TrackNumber: trackNumber,
 		Price:       randomInt(1000, 5000),
@@ -73,8 +69,7 @@ func randomItemsArr(n int, trackNumber string) []model.Item {
 	items := []model.Item{}
 
 	for i := 0; i < n; i++ {
-		item := randomItem(trackNumber)
-		items = append(items, item)
+		items = append(items, randomItem(trackNumber))
 	}
 
 	return items
@@ -84,12 +79,11 @@ func randomPayment() model.Payment {
 	currencyEnum := []string{"USD", "RUB"}
 	providerEnum := []string{"wbpay"}
 
+	var a *string
 	payment := model.Payment{
-		ID:          randomInt(1, 20),
-		Transaction: randomUIID(),
-		RequestID: sql.NullString{
-			Valid: false,
-		},
+		ID:           randomInt(1, 20),
+		Transaction:  randomUIID(),
+		RequestID:    a,
 		Currency:     randomChoise(currencyEnum),
 		Provider:     randomChoise(providerEnum),
 		Amount:       randomInt(100, 2500),
