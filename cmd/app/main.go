@@ -60,7 +60,7 @@ func main() {
 
 	log.Println("starting server")
 
-	err = subscriber.New(stanConn, *service)
+	err = subscriber.New(stanConn, service)
 	if err != nil {
 		log.Fatal("unable to create subscriber: ", err)
 	}
@@ -68,10 +68,11 @@ func main() {
 	ticker := startTicker(serverCtx, conf.Ticker)
 	done := make(chan bool)
 
-	err = publisher.Start(ticker, done)
-	if err != nil {
-		log.Fatal("unable to send msg: ", err)
-	}
+	go func() {
+		if err := publisher.Start(ticker, done); err != nil {
+			log.Fatalf("failed to start publisher: %s", err)
+		}
+	}()
 
 	handler := handler.NewOrder(*service)
 
@@ -115,20 +116,19 @@ func main() {
 
 }
 
-func router(service *service.Service, order handler.Order) http.Handler {
+func router(service *service.Order, order handler.Order) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handler.GetOrderByID(w, r, order)
+		order.GetOrderByID(w, r)
 	})
 
 	return r
 }
 
-func makeCache() *cache.Cache {
+func makeCache() *cache.OrderCache {
 	order := cache.NewOrder()
-
-	return cache.New(order)
+	return order
 }
 
 func startTicker(ctx context.Context, duration time.Duration) *time.Ticker {
