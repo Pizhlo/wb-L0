@@ -17,7 +17,7 @@ import (
 
 type Repo interface {
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order, error)
-	SaveOrder(ctx context.Context, order models.Order) error
+	SaveOrder(ctx context.Context, order models.Order) (*models.Order, error)
 	GetPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Payment, error)
 	SavePayment(ctx context.Context, payment models.Payment) (int, error)
 	GetDeliveryByOrderID(ctx context.Context, orderId uuid.UUID) (*models.Delivery, error)
@@ -53,6 +53,7 @@ func (db *Store) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order,
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			fmt.Println("not found in db")
 			return order, pkg_errs.Wrap(errs.NotFound, "not found order")
 		}
 		return order, err
@@ -97,16 +98,16 @@ func (db *Store) GetPaymentByOrderID(ctx context.Context, orderId uuid.UUID) (*m
 	return payment, nil
 }
 
-func (db *Store) SaveOrder(ctx context.Context, order models.Order) error {
+func (db *Store) SaveOrder(ctx context.Context, order models.Order) (*models.Order, error) {
 	fmt.Println("starting saving order...")
 	deliveryID, err := db.SaveDelivery(ctx, order.Delivery)
 	if err != nil {
-		return err
+		return &order, err
 	}
 
 	paymentID, err := db.SavePayment(ctx, order.Payment)
 	if err != nil {
-		return err
+		return &order, err
 	}
 
 	q := `INSERT INTO orders (order_id, track_number, entry, delivery_id, payment_id, locale, internal_signature, customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard)
@@ -115,16 +116,19 @@ func (db *Store) SaveOrder(ctx context.Context, order models.Order) error {
 	_, err = db.Exec(ctx, q, order.OrderUIID, order.TrackNumber, order.Entry, deliveryID, paymentID, order.Locale, order.InternalSignature, order.CustomerID, order.DeliveryService,
 		order.ShardKey, order.SmID, order.DateCreated, order.OofShard)
 	if err != nil {
-		return err
+		return &order, err
 	}
 
 	err = db.SaveItems(ctx, order.Items)
 	if err != nil {
-		return err
+		return &order, err
 	}
 
+	order.Payment.ID = paymentID
+	order.Delivery.ID = deliveryID
+
 	fmt.Println("order saved successfully")
-	return nil
+	return &order, nil
 }
 
 func (db *Store) SavePayment(ctx context.Context, payment models.Payment) (int, error) {
@@ -224,25 +228,28 @@ func (db *Store) GetAll(ctx context.Context) ([]models.Order, error) {
 		return orders, pkg_errs.Wrap(err, "error while recovering all orders from db")
 	}
 
-	for _, val := range orders {
-		delivery, err := db.GetDeliveryByOrderID(ctx, val.OrderUIID)
+	for i := 0; i < len(orders); i++ {
+		delivery, err := db.GetDeliveryByOrderID(ctx, orders[i].OrderUIID)
 		if err != nil {
 			return orders, pkg_errs.Wrap(err, "error while recovering all delivery from db")
 		}
-		val.Delivery = *delivery
+		fmt.Println("db delivery: ", delivery)
+		orders[i].Delivery = *delivery
 
-		items, err := db.GetItemByTrackNumber(ctx, val.TrackNumber)
+		items, err := db.GetItemByTrackNumber(ctx, orders[i].TrackNumber)
 		if err != nil {
 			return orders, pkg_errs.Wrap(err, "error while recovering all items from db")
 		}
-		val.Items = items
+		orders[i].Items = items
 
-		payment, err := db.GetPaymentByOrderID(ctx, val.OrderUIID)
+		payment, err := db.GetPaymentByOrderID(ctx, orders[i].OrderUIID)
 		if err != nil {
 			return orders, pkg_errs.Wrap(err, "error while recovering all payments from db")
 		}
-		val.Payment = *payment
+		orders[i].Payment = *payment
 	}
+
+	fmt.Println("recovered orders 0 delivery = ", orders[0].Delivery)
 
 	return orders, nil
 }
