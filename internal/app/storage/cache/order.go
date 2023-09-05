@@ -25,7 +25,7 @@ func NewOrder() *OrderCache {
 }
 
 func (c *OrderCache) Get(id uuid.UUID) (any, error) {
-	fmt.Println("getting order from cache")
+	fmt.Println("getting order from cache id = ", id)
 	val, ok := c.Load(id)
 	if !ok {
 		fmt.Println("not found in cache")
@@ -36,7 +36,8 @@ func (c *OrderCache) Get(id uuid.UUID) (any, error) {
 }
 
 func (c *OrderCache) Save(id uuid.UUID, order models.Order) {
-	fmt.Println("cache save order: ", order.OrderUIID)
+	fmt.Println("cache save order:", order.OrderUIID)
+	//fmt.Println("cache save order delivery:", order.Delivery)
 	c.Store(id, order)
 }
 
@@ -50,7 +51,7 @@ func (c *OrderCache) SaveAll(orders []models.Order) {
 		go func(j int) {
 			defer wg.Done()
 			c.Save(orders[j].OrderUIID, orders[j])
-			fmt.Printf("successfully recovered order %s from DB\n", orders[j].OrderUIID)
+			//fmt.Printf("successfully recovered order %s from DB\n", orders[j].OrderUIID)
 		}(i)
 	}
 
