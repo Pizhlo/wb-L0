@@ -1,6 +1,8 @@
 package data
 
 import (
+	"fmt"
+
 	model "github.com/Pizhlo/wb-L0/internal/model"
 )
 
@@ -30,11 +32,14 @@ func RandomOrder() model.Order {
 		OofShard:          randomString(1),
 	}
 
+	fmt.Println("generated random order id:", order.OrderUIID)
+
 	return order
 }
 
 func randomDelivery() model.Delivery {
 	delivery := model.Delivery{
+		ID:      randomInt(1, 20),
 		Name:    randomString(10),
 		Phone:   randomPhone(),
 		Zip:     randomString(6),
