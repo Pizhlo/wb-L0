@@ -19,4 +19,8 @@ infra_down:
 lint:
 	golangci-lint run ./...
 
-.PHONY: migrateup migratedown start infra_up infra_down lint
+mock: 
+	cd internal/app/storage/postgres
+	mockgen -source=store.go -destination=mocks/mocks.go
+
+.PHONY: migrateup migratedown start infra_up infra_down lint mock
