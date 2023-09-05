@@ -18,12 +18,6 @@ func runTestServer(t *testing.T, handler *Order) (chi.Router, *gomock.Controller
 	ctrl := gomock.NewController(t)
 	db := mock_postgres.NewMockRepo(ctrl)
 
-	//order := cache.NewOrder()
-	//cache := cache.New(order)
-
-	//service := service.New(db, cache)
-	//handler := NewOrder(*service)
-
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		GetOrderByID(w, r, *handler)
 	})
@@ -35,6 +29,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 	path string, body io.Reader) *http.Response {
 
 	req, err := http.NewRequest(method, ts.URL+path, body)
+
 	req.Close = true
 	req.Header.Add("Connection", "keep-alive")
 	req.Header.Add("User-Agent", "PostmanRuntime/7.32.3")
