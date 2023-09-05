@@ -54,11 +54,12 @@ func (s *Service) GetOrderByIDFromCache(id uuid.UUID) (*models.Order, error) {
 }
 
 func (s *Service) SaveOrder(ctx context.Context, order models.Order) error {
-	s.saveOrderInCache(order)
-	err := s.saveOrderInDB(ctx, order)
+	orderWithIDs, err := s.saveOrderInDB(ctx, order)
 	if err != nil {
 		return err
 	}
+
+	s.saveOrderInCache(*orderWithIDs)
 
 	return nil
 }
@@ -67,13 +68,13 @@ func (s *Service) saveOrderInCache(order models.Order) {
 	s.Cache.Order.Save(order.OrderUIID, order)
 }
 
-func (s *Service) saveOrderInDB(ctx context.Context, order models.Order) error {
-	err := s.Repo.SaveOrder(ctx, order)
+func (s *Service) saveOrderInDB(ctx context.Context, order models.Order) (*models.Order, error) {
+	orderWithIDs, err := s.Repo.SaveOrder(ctx, order)
 	if err != nil {
-		return err
+		return orderWithIDs, err
 	}
 
-	return nil
+	return orderWithIDs, nil
 }
 
 func (s *Service) Recover(ctx context.Context) error {
@@ -84,4 +85,13 @@ func (s *Service) Recover(ctx context.Context) error {
 
 	s.Cache.Order.SaveAll(orders)
 	return nil
+}
+
+func (s *Service) GetAllOrders(ctx context.Context) ([]models.Order, error) {
+	orders, err := s.Repo.GetAll(ctx)
+	if err != nil {
+		return orders, err
+	}
+
+	return orders, nil
 }
