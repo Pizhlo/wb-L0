@@ -19,7 +19,7 @@ func runTestServer(t *testing.T, handler *Order) (chi.Router, *gomock.Controller
 	db := mock_postgres.NewMockRepo(ctrl)
 
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		GetOrderByID(w, r, *handler)
+		handler.GetOrderByID(w, r)
 	})
 
 	return r, ctrl, db
