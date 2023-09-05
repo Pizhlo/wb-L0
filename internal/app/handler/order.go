@@ -12,10 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func LoadMainPg(w http.ResponseWriter, r *http.Request, handler Order) {
-	//tmpl := template.Must(template.New("").Parse())
-}
-
 func GetOrderByID(w http.ResponseWriter, r *http.Request, handler Order) {
 	id := chi.URLParam(r, "id")
 
@@ -52,4 +48,5 @@ func GetOrderByID(w http.ResponseWriter, r *http.Request, handler Order) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 }
