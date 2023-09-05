@@ -53,9 +53,8 @@ func TestGetOrderByID_InvalidUUID(t *testing.T) {
 		db := mock_postgres.NewMockRepo(ctrl)
 
 		order := cache.NewOrder()
-		cache := cache.New(order)
 
-		service := service.New(db, cache)
+		service := service.New(db, order)
 		handler := NewOrder(*service)
 
 		r, ctrl, _ := runTestServer(t, handler)
@@ -105,9 +104,8 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 		db := mock_postgres.NewMockRepo(ctrl)
 
 		order := cache.NewOrder()
-		cache := cache.New(order)
 
-		service := service.New(db, cache)
+		service := service.New(db, order)
 		handler := NewOrder(*service)
 
 		r, ctrl, db := runTestServer(t, handler)
@@ -145,9 +143,8 @@ func TestGetOrderByID_DBErr(t *testing.T) {
 		db := mock_postgres.NewMockRepo(ctrl)
 
 		order := cache.NewOrder()
-		cache := cache.New(order)
 
-		service := service.New(db, cache)
+		service := service.New(db, order)
 		handler := NewOrder(*service)
 
 		r, ctrl, db := runTestServer(t, handler)
@@ -174,7 +171,7 @@ func TestGetOrderByID_FoundInCache(t *testing.T) {
 		request    string
 		id         uuid.UUID
 		method     string
-		cache      *cache.Cache
+		cache      *cache.OrderCache
 		cacheNum   int // сколько записей добавить в кэш
 		statusCode int
 		result     models.Order
@@ -264,8 +261,7 @@ func TestGetOrderByID_FoundInDB(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		db := mock_postgres.NewMockRepo(ctrl)
 
-		orderCache := cache.NewOrder()
-		service := service.New(db, cache.New(orderCache))
+		service := service.New(db, cache.NewOrder())
 		handler := NewOrder(*service)
 
 		r, ctrl, _ := runTestServer(t, handler)
@@ -289,16 +285,15 @@ func TestGetOrderByID_FoundInDB(t *testing.T) {
 	}
 }
 
-func fillCache(n int) (*cache.Cache, []models.Order) {
-	order := cache.NewOrder()
-	cache := cache.New(order)
+func fillCache(n int) (*cache.OrderCache, []models.Order) {
+	orderCache := cache.NewOrder()
 
 	orders := []models.Order{}
 	for i := 0; i < n; i++ {
 		randomOrder := data.RandomOrder()
-		cache.Order.Save(randomOrder.OrderUIID, randomOrder)
+		orderCache.Save(randomOrder.OrderUIID, randomOrder)
 		orders = append(orders, randomOrder)
 	}
 
-	return cache, orders
+	return orderCache, orders
 }
