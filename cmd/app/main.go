@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +18,6 @@ import (
 	storage "github.com/Pizhlo/wb-L0/internal/app/storage/postgres"
 	"github.com/Pizhlo/wb-L0/internal/service"
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/stan.go"
 )
@@ -65,7 +65,7 @@ func main() {
 		log.Fatal("unable to create subscriber: ", err)
 	}
 
-	ticker := startTicker(serverCtx)
+	ticker := startTicker(serverCtx, conf.Ticker)
 	done := make(chan bool)
 
 	err = publisher.Start(ticker, done)
@@ -80,7 +80,7 @@ func main() {
 		log.Fatal("unable to recover data: ", err)
 	}
 
-	server := &http.Server{Addr: "0.0.0.0:5557", Handler: router(service, *handler)}
+	server := &http.Server{Addr: "0.0.0.0:8080", Handler: router(service, *handler)}
 
 	go func() {
 		<-sig
@@ -118,14 +118,6 @@ func main() {
 func router(service *service.Service, order handler.Order) http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
-
-	//templates := template.Must(template.ParseGlob("templates/*"))
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		handler.LoadMainPg(w, r, order)
-	})
-
 	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handler.GetOrderByID(w, r, order)
 	})
@@ -139,8 +131,9 @@ func makeCache() *cache.Cache {
 	return cache.New(order)
 }
 
-func startTicker(ctx context.Context) *time.Ticker {
-	ticker := time.NewTicker(1 * time.Minute)
+func startTicker(ctx context.Context, duration time.Duration) *time.Ticker {
+	fmt.Println("starting ticker with duration", duration)
+	ticker := time.NewTicker(duration)
 
 	return ticker
 }
