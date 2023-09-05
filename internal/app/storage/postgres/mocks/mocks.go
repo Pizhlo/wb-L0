@@ -141,11 +141,12 @@ func (mr *MockRepoMockRecorder) SaveItems(ctx, items interface{}) *gomock.Call {
 }
 
 // SaveOrder mocks base method.
-func (m *MockRepo) SaveOrder(ctx context.Context, order models.Order) error {
+func (m *MockRepo) SaveOrder(ctx context.Context, order models.Order) (*models.Order, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveOrder", ctx, order)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*models.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SaveOrder indicates an expected call of SaveOrder.
