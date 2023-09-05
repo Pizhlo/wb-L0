@@ -41,8 +41,8 @@ func TestGetOrderByID_InvalidUUID(t *testing.T) {
 			statusCode: http.StatusBadRequest,
 		},
 		{
-			name:       "invalid UUID asdaslk19280",
-			request:    "/asdaslk19280",
+			name:       "invalid UUID test-test-123",
+			request:    "/test-test-123",
 			method:     http.MethodGet,
 			statusCode: http.StatusBadRequest,
 		},
@@ -116,7 +116,7 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 		ts := httptest.NewServer(r)
 		defer ts.Close()
 
-		db.EXPECT().GetOrderByID(gomock.Any(), id).Return(&models.Order{}, errs.NotFound)
+		db.EXPECT().GetOrderByID(gomock.Any(), id).Return(&models.Order{}, errs.NotFound).AnyTimes()
 
 		resp := testRequest(t, ts, tt.method, tt.request, nil)
 		defer resp.Body.Close()
@@ -128,21 +128,19 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 func TestGetOrderByID_DBErr(t *testing.T) {
 	tests := []struct {
 		request    string
-		idString   string
+		id         uuid.UUID
 		method     string
 		statusCode int
 	}{
 		{
-			request:    "/e2620fc5-4675-4f85-859a-b89e9a689f9e",
-			idString:   "e2620fc5-4675-4f85-859a-b89e9a689f9e",
+			request:    "",
+			id:         uuid.New(),
 			method:     http.MethodGet,
 			statusCode: http.StatusInternalServerError,
 		},
 	}
 
 	for _, tt := range tests {
-		id := uuid.MustParse(tt.idString)
-
 		ctrl := gomock.NewController(t)
 		db := mock_postgres.NewMockRepo(ctrl)
 
@@ -160,7 +158,9 @@ func TestGetOrderByID_DBErr(t *testing.T) {
 
 		pgErr := pgconn.PgError{}
 
-		db.EXPECT().GetOrderByID(gomock.Any(), id).Return(&models.Order{}, &pgErr)
+		tt.request = fmt.Sprintf("/%s", tt.id)
+
+		db.EXPECT().GetOrderByID(gomock.Any(), tt.id).Return(&models.Order{}, &pgErr).Times(1)
 
 		resp := testRequest(t, ts, tt.method, tt.request, nil)
 		defer resp.Body.Close()
