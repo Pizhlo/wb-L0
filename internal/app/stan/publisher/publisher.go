@@ -49,6 +49,8 @@ func (p *Publisher) sendMsg() error {
 	order := data.RandomOrder()
 	msg.Order = order
 
+	//fmt.Printf("sending random order: %+v\n", order)
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return errors.Wrap(err, "publisher: cannot marshal msg to json")
