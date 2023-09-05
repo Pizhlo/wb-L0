@@ -1,0 +1,9 @@
+Requests      [total, rate, throughput]         1794855, 27153.04, 27109.02
+Duration      [total, attack, wait]             1m6s, 1m6s, 8.386ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  82.903µs, 547.374ms, 386.478ms, 1.204s, 1.577s, 3.093s, 5.491s
+Bytes In      [total, mean]                     3129134058, 1743.39
+Bytes Out     [total, mean]                     0, 0.00
+Success       [ratio]                           99.85%
+Status Codes  [code:count]                      0:2682  200:1792173  
+Error Set:
+Get "http://localhost:8080/43495e9c-2b1f-4842-b9b7-4d431ec85ada": dial tcp 0.0.0.0:0->127.0.0.1:8080: bind: address already in use
