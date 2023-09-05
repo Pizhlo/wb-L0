@@ -17,7 +17,7 @@ type OrderCacher interface {
 }
 
 type OrderCache struct {
-	sync.Map
+	data sync.Map
 }
 
 func NewOrder() *OrderCache {
@@ -26,7 +26,7 @@ func NewOrder() *OrderCache {
 
 func (c *OrderCache) Get(id uuid.UUID) (any, error) {
 	fmt.Println("getting order from cache id = ", id)
-	val, ok := c.Load(id)
+	val, ok := c.data.Load(id)
 	if !ok {
 		fmt.Println("not found in cache")
 		return nil, errors.Wrap(errs.NotFound, "not found order in cache")
@@ -37,8 +37,7 @@ func (c *OrderCache) Get(id uuid.UUID) (any, error) {
 
 func (c *OrderCache) Save(id uuid.UUID, order models.Order) {
 	fmt.Println("cache save order:", order.OrderUIID)
-	//fmt.Println("cache save order delivery:", order.Delivery)
-	c.Store(id, order)
+	c.data.Store(id, order)
 }
 
 // восстановить данные из БД в случае падения сервиса
@@ -51,7 +50,6 @@ func (c *OrderCache) SaveAll(orders []models.Order) {
 		go func(j int) {
 			defer wg.Done()
 			c.Save(orders[j].OrderUIID, orders[j])
-			//fmt.Printf("successfully recovered order %s from DB\n", orders[j].OrderUIID)
 		}(i)
 	}
 

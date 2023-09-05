@@ -56,7 +56,7 @@ func (db *Store) GetOrderByID(ctx context.Context, id uuid.UUID) (*models.Order,
 			fmt.Println("not found in db")
 			return order, pkg_errs.Wrap(errs.NotFound, "not found order")
 		}
-		return order, err
+		return order, pkg_errs.Wrap(errs.NotFound, "err while scanning order")
 	}
 
 	delivery, err := db.GetDeliveryByOrderID(ctx, id)
